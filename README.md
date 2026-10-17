@@ -2,53 +2,79 @@
 
 Bachelor thesis project – Politehnica University of Timișoara.
 
-## 1. Project Overview
+## Project Description
 
-A digital filter design application running on a Raspberry Pi 5 with a touchscreen interface.
+A digital filter design application developed for Raspberry Pi 5 with a touchscreen interface.
 
-The user will be able to configure digital filters, calculate their coefficients, and transmit them via UART to a Blackfin DSP processor for real-time audio filtering.
+The Raspberry Pi calculates digital filter coefficients and sends them via UART to a Blackfin DSP, which performs real-time audio filtering.
 
-## 2. Hardware
+Supported filter types:
+- Low Pass (LPF)
+- High Pass (HPF)
+- Band Pass (BPF)
+- Band Stop (BSF)
 
-- Raspberry Pi 5 (4 GB RAM)
-- 5-inch touchscreen (800 × 480)
-- Analog Devices Blackfin DSP board (model to be confirmed)
+## Technologies
 
-## 3. Technologies
+- **Python 3.12.7** – Main programming language
+- **VS Code** – Development environment
+- **PySide6** – Graphical user interface
+- **Git & GitHub** – Version control
+- **NumPy / SciPy** – Filter design (planned)
+- **Matplotlib** – Frequency response visualization (planned)
+- **pySerial** – UART communication (planned)
 
-| Technology | Purpose |
-|---|---|
-| Python 3.12.7 | Main programming language (development environment) |
-| VS Code | Development environment |
-| Git & GitHub | Version control |
-| PySide6 | Graphical user interface (planned) |
-| NumPy & SciPy | Digital filter design and calculations (planned) |
-| Matplotlib | Filter response visualization (planned) |
-| pySerial | UART communication (planned) |
+## Project Structure
 
-## 4. Supported Filters
+- `src/main.py` – Application entry point
+- `src/ui/` – Graphical interface
+- `src/filters/` – Filter coefficient calculations
+- `src/analysis/` – Frequency response analysis
+- `src/communication/` – UART communication
+- `src/config/` – Configuration
+- `tests/` – Testing
+- `docs/` – Technical notes
+- `assets/` – Application resources
 
-- Low-Pass Filter (LPF)
-- High-Pass Filter (HPF)
-- Band-Pass Filter (BPF)
-- Band-Stop Filter (BSF)
+## Development Log
 
-## 5. Development Progress
+### 17 October 2026 – Initial Setup and GUI
 
-- [x] Created GitHub repository
-- [x] Created project folder structure
-- [x] Created Python virtual environment
-- [ ] Implement graphical interface
-- [ ] Implement filter design
-- [ ] Implement frequency response visualization
-- [ ] Implement UART communication
-- [ ] Integrate Raspberry Pi and Blackfin
-- [ ] Test complete system
+**Environment**
+- Created GitHub repository and project folders.
+- Created Python virtual environment (`.venv`).
+- Installed PySide6.
+- Updated pip to version 26.2.1.
 
-## 6. Development Notes
+**GUI Implementation**
+- Created the main application window (800 × 480).
+- Separated `main.py` from `ui/main_window.py`.
+- Added filter selection using `QComboBox`.
+- Added cutoff frequency and filter order inputs using `QSpinBox`.
+- Implemented dynamic visibility of the second cutoff frequency for BPF and BSF.
+- Added the `Design Filter` button using `QPushButton`.
+- Connected the button to a function that prints the selected parameters.
 
-The application is initially developed on Windows using VS Code and will later be deployed on Raspberry Pi 5.
+**Git**
+- Committed and pushed the initial implementation.
 
-The Blackfin DSP receives the audio signal and performs filtering. The Raspberry Pi calculates the filter coefficients and sends them to Blackfin via UART.
+## Running the Application
 
-Reference code for UART communication was provided from a previous real-time audio watermarking project.
+Activate the virtual environment:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
+
+Run the application:
+
+```powershell
+python src/main.py
+```
+
+## Next Steps
+
+- Improve the GUI layout for the 800 × 480 touchscreen.
+- Add an area for frequency response graphs.
+- Prepare the GUI for filter coefficient calculation.
+- Study the UART reference code provided by the coordinator.
