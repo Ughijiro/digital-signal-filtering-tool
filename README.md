@@ -58,6 +58,23 @@ Supported filter types:
 **Git**
 - Committed and pushed the initial implementation.
 
+
+**GUI Layout and Visualization**
+- Organized the GUI into two columns using QHBoxLayout.
+- Applied Qt stylesheets for improved touchscreen usability.
+- Fixed text colors for dropdown menus and warning dialogs.
+- Installed NumPy and Matplotlib.
+- Integrated Matplotlib into PySide6 using FigureCanvasQTAgg.
+- Added demonstration magnitude response graphs for LPF, HPF, BPF and BSF.
+- Connected the Design Filter button to graph updates.
+- Added cutoff frequency validation for band filters.
+
+**Technical Notes**
+- The frequency response curves are currently demonstrations, not calculated from actual filter coefficients.
+- Filter coefficient calculation and UART communication are not yet implemented.
+```
+
+
 ## Running the Application
 
 Activate the virtual environment:
