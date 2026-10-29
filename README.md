@@ -2,13 +2,13 @@
 
 Bachelor thesis project – Politehnica University of Timișoara.
 
-## Project Description
+## About the Project
 
 A digital filter design application developed for Raspberry Pi 5 with a touchscreen interface.
 
-The Raspberry Pi calculates digital filter coefficients and sends them via UART to a Blackfin DSP, which performs real-time audio filtering.
+The Raspberry Pi is responsible for the user interface and filter coefficient calculations. The coefficients will be sent through UART to a Blackfin DSP, which performs real-time audio filtering.
 
-Supported filter types:
+The application supports four filter types:
 - Low Pass (LPF)
 - High Pass (HPF)
 - Band Pass (BPF)
@@ -16,64 +16,52 @@ Supported filter types:
 
 ## Technologies
 
-- **Python 3.12.7** – Main programming language
-- **VS Code** – Development environment
+- **Python** – Main programming language
 - **PySide6** – Graphical user interface
-- **Git & GitHub** – Version control
-- **NumPy / SciPy** – Filter design (planned)
-- **Matplotlib** – Frequency response visualization (planned)
+- **NumPy** – Mathematical calculations
+- **Matplotlib** – Frequency response visualization
+- **SciPy** – Verification of filter coefficients
 - **pySerial** – UART communication (planned)
+- **Git & GitHub** – Version control
+
+Development is currently done on Windows using VS Code.
+
+## Current Progress
+
+### Graphical Interface
+- Created an 800 × 480 interface for the Raspberry Pi touchscreen.
+- Added filter type selection, cutoff frequencies in kHz and filter order.
+- Added input validation for band filters.
+- Integrated Matplotlib to display frequency response graphs.
+
+### Filter Design
+- Implemented a digital Butterworth Low Pass filter for orders 1–4.
+- Calculated filter coefficients using mathematical formulas and pole calculations.
+- Implemented frequency prewarping and bilinear transformation.
+- Verified the calculated coefficients against SciPy.
+- Connected the Butterworth Low Pass algorithm to the GUI.
+- Confirmed that increasing the filter order produces a steeper transition.
+
+High Pass, Band Pass and Band Stop currently use demonstration curves.
+
+The sampling frequency is temporarily set to 48 kHz.
 
 ## Project Structure
 
-- `src/main.py` – Application entry point
-- `src/ui/` – Graphical interface
-- `src/filters/` – Filter coefficient calculations
-- `src/analysis/` – Frequency response analysis
-- `src/communication/` – UART communication
-- `src/config/` – Configuration
-- `tests/` – Testing
-- `docs/` – Technical notes
-- `assets/` – Application resources
-
-## Development Log
-
-### 17 October 2026 – Initial Setup and GUI
-
-**Environment**
-- Created GitHub repository and project folders.
-- Created Python virtual environment (`.venv`).
-- Installed PySide6.
-- Updated pip to version 26.2.1.
-
-**GUI Implementation**
-- Created the main application window (800 × 480).
-- Separated `main.py` from `ui/main_window.py`.
-- Added filter selection using `QComboBox`.
-- Added cutoff frequency and filter order inputs using `QSpinBox`.
-- Implemented dynamic visibility of the second cutoff frequency for BPF and BSF.
-- Added the `Design Filter` button using `QPushButton`.
-- Connected the button to a function that prints the selected parameters.
-
-**Git**
-- Committed and pushed the initial implementation.
-
-
-**GUI Layout and Visualization**
-- Organized the GUI into two columns using QHBoxLayout.
-- Applied Qt stylesheets for improved touchscreen usability.
-- Fixed text colors for dropdown menus and warning dialogs.
-- Installed NumPy and Matplotlib.
-- Integrated Matplotlib into PySide6 using FigureCanvasQTAgg.
-- Added demonstration magnitude response graphs for LPF, HPF, BPF and BSF.
-- Connected the Design Filter button to graph updates.
-- Added cutoff frequency validation for band filters.
-
-**Technical Notes**
-- The frequency response curves are currently demonstrations, not calculated from actual filter coefficients.
-- Filter coefficient calculation and UART communication are not yet implemented.
+```text
+digital-signal-filtering-tool/
+├── src/
+│   ├── main.py
+│   ├── butterworth.py
+│   └── ui/
+│       └── main_window.py
+├── tests/
+├── docs/
+├── assets/
+└── README.md
 ```
 
+Other modules will be added as development continues.
 
 ## Running the Application
 
@@ -89,9 +77,23 @@ Run the application:
 python src/main.py
 ```
 
+To test the Butterworth algorithm separately:
+
+```powershell
+python src/butterworth.py
+```
+
 ## Next Steps
 
-- Improve the GUI layout for the 800 × 480 touchscreen.
-- Add an area for frequency response graphs.
-- Prepare the GUI for filter coefficient calculation.
-- Study the UART reference code provided by the coordinator.
+- Implement Butterworth High Pass, Band Pass and Band Stop.
+- Add support for additional filter families, such as Chebyshev.
+- Improve filter design and coefficient validation.
+- Implement UART communication between Raspberry Pi and Blackfin.
+- Test the application on Raspberry Pi 5 with the touchscreen.
+- Integrate and test real-time audio filtering on Blackfin.
+
+## References
+
+- [Butterworth Lowpass Design – Julius O. Smith III](https://www.dsprelated.com/freebooks/filters/Butterworth_Lowpass_Design.html)
+- [Bilinear Transformation – Julius O. Smith III](https://www.dsprelated.com/freebooks/filters/Bilinear_Transformation.html)
+- [SciPy Signal Documentation](https://docs.scipy.org/doc/scipy/reference/signal.html)
