@@ -35,16 +35,14 @@ Development is currently done on Windows using VS Code.
 - Integrated Matplotlib to display frequency response graphs.
 
 ### Filter Design
-- Implemented a digital Butterworth Low Pass filter for orders 1–4.
-- Calculated filter coefficients using mathematical formulas and pole calculations.
-- Implemented frequency prewarping and bilinear transformation.
-- Verified the calculated coefficients against SciPy.
-- Connected the Butterworth Low Pass algorithm to the GUI.
-- Confirmed that increasing the filter order produces a steeper transition.
 
-High Pass, Band Pass and Band Stop currently use demonstration curves.
-
-The sampling frequency is temporarily set to 48 kHz.
+- Implemented Butterworth Low Pass, High Pass, Band Pass and Band Stop.
+- Added support for prototype orders 1–4.
+- Implemented pole calculations, frequency prewarping and bilinear transformation.
+- Calculated digital filter coefficients without using SciPy design functions.
+- Verified all four filter types against SciPy for orders 1–4.
+- Connected all filters to the GUI and tested their frequency responses.
+- Sampling frequency is currently fixed at 48 kHz.
 
 ## Project Structure
 
