@@ -1,7 +1,8 @@
-# Purpose: Create a graphical interface for designing digital filters.
-# The user can select the filter type, cutoff frequencies, and filter order.
-# Frequency values are displayed in kHz.
-# The frequency response is currently demonstrated using simple formulas.
+# Purpose: Create the GUI for the Digital Signal Filtering Tool.
+# The interface supports four Butterworth digital filter types.
+# Frequencies are displayed in kHz.
+
+import numpy as np
 
 from PySide6.QtWidgets import (
     QMainWindow,
@@ -16,12 +17,15 @@ from PySide6.QtWidgets import (
     QMessageBox
 )
 
-import numpy as np
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
 
-from butterworth import butterworth_lowpass
-
+from butterworth import (
+    butterworth_lowpass,
+    butterworth_highpass,
+    butterworth_bandpass,
+    butterworth_bandstop
+)
 
 class MainWindow(QMainWindow):
 
@@ -67,13 +71,11 @@ class MainWindow(QMainWindow):
                 background-color: #1d4ed8;
             }
 
-            /* Purpose: Fix dropdown list colors. */
             QComboBox QAbstractItemView {
                 background-color: white;
                 color: #1f2937;
                 selection-background-color: #2563eb;
                 selection-color: white;
-                border: 1px solid #cbd5e1;
             }
 
             QMessageBox {
@@ -82,7 +84,6 @@ class MainWindow(QMainWindow):
 
             QMessageBox QLabel {
                 color: #1f2937;
-                font-size: 14px;
             }
 
             QMessageBox QPushButton {
@@ -93,27 +94,27 @@ class MainWindow(QMainWindow):
             }
         """)
 
-        # Purpose: Create the central widget and main layout.
+        # MAIN LAYOUT
+
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
 
-        # Purpose: Split the GUI into controls and graph areas.
         main_layout = QHBoxLayout(central_widget)
 
+        # Left side: filter controls.
         layout = QVBoxLayout()
         main_layout.addLayout(layout, 1)
 
+        # Right side: frequency response graph.
         graph_layout = QVBoxLayout()
         main_layout.addLayout(graph_layout, 2)
 
-        # -----------------------------------------
         # FILTER CONTROLS
-        # -----------------------------------------
 
         title = QLabel("Digital Filter Designer")
         layout.addWidget(title)
 
-        # Purpose: Allow selection of one of four filter types.
+        # Purpose: Select the filter type.
         filter_label = QLabel("Filter Type:")
         layout.addWidget(filter_label)
 
@@ -127,7 +128,6 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.filter_combo)
 
         # Purpose: Select the cutoff frequency in kHz.
-        # QDoubleSpinBox allows decimal values such as 1.50 kHz.
         frequency_label = QLabel("Cutoff Frequency (kHz):")
         layout.addWidget(frequency_label)
 
@@ -138,8 +138,11 @@ class MainWindow(QMainWindow):
         self.frequency_input.setValue(1.00)
         layout.addWidget(self.frequency_input)
 
-        # Purpose: Add a second cutoff frequency for band filters.
-        self.frequency2_label = QLabel("Upper Cutoff Frequency (kHz):")
+        # Purpose: Select the upper cutoff frequency
+        # for Band Pass and Band Stop filters.
+        self.frequency2_label = QLabel(
+            "Upper Cutoff Frequency (kHz):"
+        )
         layout.addWidget(self.frequency2_label)
 
         self.frequency2_input = QDoubleSpinBox()
@@ -149,21 +152,20 @@ class MainWindow(QMainWindow):
         self.frequency2_input.setValue(3.00)
         layout.addWidget(self.frequency2_input)
 
-        # Purpose: Hide the upper cutoff frequency by default.
+        # Hide the second cutoff by default.
         self.frequency2_label.hide()
         self.frequency2_input.hide()
 
-        # Purpose: Select the filter order.
-        # QSpinBox is used because the order must be an integer.
+        # Purpose: Select the Butterworth prototype order.
         order_label = QLabel("Filter Order:")
         layout.addWidget(order_label)
 
         self.order_input = QSpinBox()
-        self.order_input.setRange(1, 100)
+        self.order_input.setRange(1, 4)
         self.order_input.setValue(2)
         layout.addWidget(self.order_input)
 
-        # Purpose: Create a button to design the selected filter.
+        # Purpose: Design the selected filter.
         self.design_button = QPushButton("Design Filter")
         layout.addWidget(self.design_button)
 
@@ -171,69 +173,46 @@ class MainWindow(QMainWindow):
 
         layout.addStretch()
 
-        # -----------------------------------------
         # FREQUENCY RESPONSE GRAPH
-        # -----------------------------------------
 
-        # Purpose: Create a graph inside the application window.
         graph_title = QLabel("Frequency Response")
         graph_layout.addWidget(graph_title)
 
         self.figure = Figure(figsize=(5, 3))
         self.canvas = FigureCanvasQTAgg(self.figure)
-
         graph_layout.addWidget(self.canvas)
 
-        # Purpose: Show the upper cutoff input only for band filters.
+        # Show the second cutoff only for band filters.
         self.filter_combo.currentTextChanged.connect(
             self.update_filter_fields
         )
 
-        # Purpose: Display the initial demonstration graph.
-        self.update_graph(
-            self.filter_combo.currentText(),
-            self.frequency_input.value()
-        )
+        # Display an initial Low Pass graph.
+        self.update_graph("Low Pass", 1.00)
 
-    # -----------------------------------------
     # FILTER TYPE SELECTION
-    # -----------------------------------------
 
     def update_filter_fields(self, filter_type):
 
-        # Purpose: Check whether the selected filter needs two frequencies.
         is_band_filter = filter_type in ["Band Pass", "Band Stop"]
 
         self.frequency2_label.setVisible(is_band_filter)
         self.frequency2_input.setVisible(is_band_filter)
 
-    # -----------------------------------------
-    # FILTER DESIGN BUTTON
-    # -----------------------------------------
+    # DESIGN FILTER BUTTON
 
     def design_filter(self):
 
-        # Purpose: Read the parameters selected by the user.
+        # Read user-selected parameters.
         filter_type = self.filter_combo.currentText()
-        frequency = self.frequency_input.value()
+        cutoff = self.frequency_input.value()
+        upper = self.frequency2_input.value()
         order = self.order_input.value()
-        
-        # Purpose: Prevent using unsupported orders for the current algorithm.
-        # Purpose: Validate the supported Butterworth Low Pass orders.
-        if filter_type == "Low Pass" and not 1 <= order <= 4:
-            QMessageBox.warning(
-                self,
-                "Unsupported Order",
-                "Butterworth Low Pass currently supports orders 1 to 4."
-            )
-            return
 
-        # Purpose: Validate the cutoff frequencies for band filters.
+        # Validate the frequencies for band filters.
         if filter_type in ["Band Pass", "Band Stop"]:
 
-            upper = self.frequency2_input.value()
-
-            if frequency >= upper:
+            if cutoff >= upper:
                 QMessageBox.warning(
                     self,
                     "Invalid Frequencies",
@@ -242,113 +221,90 @@ class MainWindow(QMainWindow):
                 )
                 return
 
-        # Purpose: Display the selected parameters in the terminal.
+        # Display the selected parameters.
         print("Filter:", filter_type)
-        print("Cutoff Frequency:", frequency, "kHz")
+        print("Cutoff Frequency:", cutoff, "kHz")
 
         if filter_type in ["Band Pass", "Band Stop"]:
-            print(
-                "Upper Cutoff Frequency:",
-                self.frequency2_input.value(),
-                "kHz"
-            )
+            print("Upper Cutoff Frequency:", upper, "kHz")
 
         print("Order:", order)
         print("--------------------")
 
-        # Purpose: Update the frequency response graph.
-        self.update_graph(filter_type, frequency)
+        # Update the frequency response graph.
+        self.update_graph(filter_type, cutoff)
 
-    # -----------------------------------------
-    # DEMONSTRATION FREQUENCY RESPONSE
-    # -----------------------------------------
+    # FREQUENCY RESPONSE
 
-    
     def update_graph(self, filter_type, cutoff):
 
-        # Purpose: Generate 500 frequency points from 0 to 20 kHz.
+        # Generate 500 frequency points from 0 to 20 kHz.
         frequency = np.linspace(0, 20, 500)
+
+        # Convert cutoff frequencies from kHz to Hz.
+        cutoff_hz = cutoff * 1000
+        upper_hz = self.frequency2_input.value() * 1000
+
+        order = self.order_input.value()
+        sampling_hz = 48000
+
+        # CALCULATE FILTER COEFFICIENTS
 
         if filter_type == "Low Pass":
 
-            # Convert kHz to Hz.
-            cutoff_hz = cutoff * 1000
-
-            # Read the selected filter order.
-            order = self.order_input.value()
-
-            # Calculate Butterworth Low Pass coefficients.
-            b, a = butterworth_lowpass(cutoff_hz, order)
-
-            # Convert frequency values to digital angular frequency.
-            omega = 2 * np.pi * (frequency * 1000) / 48000
-
-            # Calculate the frequency response using all coefficients.
-            numerator = np.zeros(len(frequency), dtype=complex)
-            denominator = np.zeros(len(frequency), dtype=complex)
-
-            for i in range(len(b)):
-                numerator += b[i] * np.exp(-1j * omega * i)
-
-            for i in range(len(a)):
-                denominator += a[i] * np.exp(-1j * omega * i)
-
-            magnitude = np.abs(numerator / denominator)
-
-            # Display calculated coefficients in the terminal.
-            print("Butterworth Low Pass coefficients:")
-            print("b:", b)
-            print("a:", a)
+            b, a = butterworth_lowpass(
+                cutoff_hz, order, sampling_hz
+            )
 
         elif filter_type == "High Pass":
 
-            # Demonstration High Pass response.
-            magnitude = (frequency / cutoff) ** 2 / np.sqrt(
-                1 + (frequency / cutoff) ** 4
+            b, a = butterworth_highpass(
+                cutoff_hz, order, sampling_hz
             )
 
         elif filter_type == "Band Pass":
 
-            # Demonstration Band Pass response.
-            upper = self.frequency2_input.value()
-            center = (cutoff + upper) / 2
-            bandwidth = (upper - cutoff) / 2
-
-            if bandwidth <= 0:
-                return
-
-            magnitude = np.exp(
-                -0.5 * ((frequency - center) / bandwidth) ** 2
+            b, a = butterworth_bandpass(
+                cutoff_hz, upper_hz, order, sampling_hz
             )
 
         elif filter_type == "Band Stop":
 
-            # Demonstration Band Stop response.
-            upper = self.frequency2_input.value()
-            center = (cutoff + upper) / 2
-            bandwidth = (upper - cutoff) / 2
-
-            if bandwidth <= 0:
-                return
-
-            magnitude = 1 - np.exp(
-                -0.5 * ((frequency - center) / bandwidth) ** 2
+            b, a = butterworth_bandstop(
+                cutoff_hz, upper_hz, order, sampling_hz
             )
 
-        # Purpose: Clear the previous graph.
+        else:
+            return
+
+        # CALCULATE FREQUENCY RESPONSE
+
+        # Convert frequencies to digital angular frequency.
+        omega = 2 * np.pi * (frequency * 1000) / sampling_hz
+
+        # Evaluate H(e^jw) using all coefficients.
+        numerator = np.zeros(len(frequency), dtype=complex)
+        denominator = np.zeros(len(frequency), dtype=complex)
+
+        for i in range(len(b)):
+            numerator += b[i] * np.exp(-1j * omega * i)
+
+        for i in range(len(a)):
+            denominator += a[i] * np.exp(-1j * omega * i)
+
+        magnitude = np.abs(numerator / denominator)
+
+        # DISPLAY GRAPH
+
         self.figure.clear()
         ax = self.figure.add_subplot(111)
 
-        # Purpose: Display the frequency response.
         ax.plot(frequency, magnitude)
 
-        if filter_type == "Low Pass":
-            ax.set_title(f"Butterworth Low Pass - Order {order}")
-        else:
-            ax.set_title(f"{filter_type} - Demonstration")
-
+        ax.set_title(f"Butterworth {filter_type} - Order {order}")
         ax.set_xlabel("Frequency (kHz)")
         ax.set_ylabel("Magnitude")
+        ax.set_ylim(0, 1.1)
         ax.grid(True)
 
         self.figure.tight_layout()
