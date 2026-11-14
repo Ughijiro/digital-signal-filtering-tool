@@ -15,7 +15,7 @@ def main():
     window = MainWindow()
     window.show()
 
-    # Start the application event loop.
+    # Start the app
     sys.exit(app.exec())
 
 

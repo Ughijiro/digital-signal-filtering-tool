@@ -244,7 +244,6 @@ def butterworth_bandstop(lower_hz, upper_hz,
 # TESTING
 
 # Purpose: Compare our coefficients with SciPy.
-# These tests run only when this file is executed directly.
 
 if __name__ == "__main__":
 
