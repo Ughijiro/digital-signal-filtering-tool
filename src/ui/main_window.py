@@ -3,6 +3,7 @@
 # Frequencies are displayed in kHz.
 
 import numpy as np
+import serial
 
 from PySide6.QtWidgets import (
     QMainWindow,
@@ -27,6 +28,7 @@ from butterworth import (
     butterworth_bandstop
 )
 
+from communication.uart import create_message, send_data
 class MainWindow(QMainWindow):
 
     def __init__(self):
@@ -170,7 +172,29 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.design_button)
 
         self.design_button.clicked.connect(self.design_filter)
+        
+        # Purpose: Send filter coefficients through UART.
+        self.send_button = QPushButton("Send to Blackfin")
+        layout.addWidget(self.send_button)
 
+        self.send_button.setEnabled(False)
+        self.send_button.clicked.connect(self.send_filter)
+        # Disable sending when filter parameters change.
+        self.filter_combo.currentTextChanged.connect(
+            lambda: self.send_button.setEnabled(False)
+        )
+
+        self.frequency_input.valueChanged.connect(
+            lambda: self.send_button.setEnabled(False)
+        )
+
+        self.frequency2_input.valueChanged.connect(
+            lambda: self.send_button.setEnabled(False)
+        )
+
+        self.order_input.valueChanged.connect(
+            lambda: self.send_button.setEnabled(False)
+        )
         layout.addStretch()
 
         # FREQUENCY RESPONSE GRAPH
@@ -233,6 +257,39 @@ class MainWindow(QMainWindow):
 
         # Update the frequency response graph.
         self.update_graph(filter_type, cutoff)
+        
+        # Enable UART transmission after designing the filter.
+        self.send_button.setEnabled(True)
+    # UART TRANSMISSION
+
+    def send_filter(self):
+        message = create_message(self.current_b, self.current_a)
+        
+        try:
+            success = send_data(message) == len(message)
+            #success = send_data(message, port="COM999") == len(message)
+        except (serial.SerialException, OSError) as error:
+            QMessageBox.warning(
+                self,
+                "UART Error",
+                str(error)
+            )
+            return
+        if success:
+            QMessageBox.information(
+                self,
+                "UART Transmission",
+                "Message written successfully (virtual UART)."
+            )
+        else:
+            QMessageBox.warning(
+                self,
+                "UART Transmission Error",
+                "UART transmission failed."
+            )
+            
+        print("UART message length:", len(message))
+        print("UART write successful:", success)
 
     # FREQUENCY RESPONSE
 
@@ -276,6 +333,10 @@ class MainWindow(QMainWindow):
 
         else:
             return
+        
+        # Save coefficients for UART transmission.
+        self.current_b = b
+        self.current_a = a
 
         # CALCULATE FREQUENCY RESPONSE
 
