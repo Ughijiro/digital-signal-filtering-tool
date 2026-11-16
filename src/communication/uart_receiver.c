@@ -2,6 +2,7 @@
 // containing Butterworth filter coefficients.
 
 #include <stdint.h>
+#include <string.h>
 
 #define MAX_PAYLOAD_SIZE 144
 
@@ -24,11 +25,27 @@ static uint8_t rx_buffer[MAX_PAYLOAD_SIZE];
 static uint16_t rx_index = 0;
 static uint8_t calculated_checksum = 0;
 static uint8_t checksum_ok = 0;
+static uint32_t valid_messages = 0;
 
 // Purpose: Return the checksum verification result.
 int uart_get_checksum_status(void)
 {
     return checksum_ok;
+}
+
+int uart_get_b_count(void)
+{
+    return checksum_ok ? b_count : 0;
+}
+
+int uart_get_a_count(void)
+{
+    return checksum_ok ? a_count : 0;
+}
+
+uint32_t uart_get_valid_messages(void)
+{
+    return valid_messages;
 }
 
 void readRX(uint8_t byte)
@@ -105,6 +122,7 @@ void readRX(uint8_t byte)
         case READ_CHECKSUM:
             if (byte == calculated_checksum) {
                 checksum_ok = 1;
+                valid_messages++;
             }
             else {
                 checksum_ok = 0;
@@ -113,4 +131,35 @@ void readRX(uint8_t byte)
             state = WAIT_AA;
             break;
     }
+}
+
+// Purpose: Reconstruct a b coefficient by its index.
+double uart_get_b(uint8_t index)
+{
+    double value = 0.0;
+
+    if (!checksum_ok || index >= b_count || sizeof(double) != 8)
+        return 0.0;
+
+    size_t offset = index * 8;
+
+    memcpy(&value, rx_buffer + offset, 8);
+
+    return value;
+}
+
+// Purpose: Reconstruct an a coefficient by its index.
+double uart_get_a(uint8_t index)
+{
+    double value = 0.0;
+
+    if (!checksum_ok || index >= a_count || sizeof(double) != 8)
+        return 0.0;
+
+    // Calculate offset.
+    // Copy 8 bytes into value.
+    size_t offset = (b_count + index) * 8;
+    memcpy(&value, rx_buffer + offset, 8);
+
+    return value;
 }

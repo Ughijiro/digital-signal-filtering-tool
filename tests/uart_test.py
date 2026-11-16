@@ -24,6 +24,9 @@ b, a = butterworth_bandpass(1000, 3000, 4)
 
 # Create binary UART message.
 message = create_message(b, a)
+# Save UART message for testing the C receiver.
+packet_path = Path(__file__).with_name("packet.bin")
+packet_path.write_bytes(message)
 
 # Create virtual UART connection.
 uart = serial.serial_for_url("loop://", timeout=1)
@@ -33,14 +36,6 @@ try:
     received = uart.read(len(message))
 finally:
     uart.close()
-    
-# Simulate corrupted UART data
-""" received = bytearray(received)
-received[10] ^= 0x01
-received = bytes(received) """
-    
-# Simulate an incomplete message
-# received = received[:-10]
 
 print("Transmission successful:", message == received)
 
@@ -82,6 +77,13 @@ decoded = struct.unpack(
 
 received_b = decoded[:b_count]
 received_a = decoded[b_count:]
+
+# Save reference coefficients for the C receiver test.
+np.savetxt(
+    Path(__file__).with_name("coefficients_reference.txt"),
+    np.concatenate((b, a)),
+    fmt="%.17g"
+)
 
 # Verify coefficients.
 print("b match:", np.array_equal(b, received_b))

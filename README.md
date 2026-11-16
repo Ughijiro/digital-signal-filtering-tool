@@ -1,4 +1,3 @@
-
 # Digital Signal Filtering Tool
 
 Bachelor thesis project – Politehnica University of Timișoara.
@@ -7,7 +6,7 @@ Bachelor thesis project – Politehnica University of Timișoara.
 
 A digital filter design application developed for Raspberry Pi 5 with a touchscreen interface.
 
-The Raspberry Pi is responsible for the user interface and filter coefficient calculations. The coefficients are sent through UART to a Blackfin DSP, which performs real-time audio filtering.
+The Raspberry Pi is responsible for the user interface and filter coefficient calculations. The coefficients will be transmitted through UART to a Blackfin DSP, which will perform real-time audio filtering.
 
 The application supports four filter types:
 - Low Pass (LPF)
@@ -23,10 +22,11 @@ The application supports four filter types:
 - **Matplotlib** – Frequency response visualization
 - **SciPy** – Verification of filter coefficients
 - **pySerial** – UART communication and virtual testing
-- **C** – Planned Blackfin receiver implementation
+- **C** – UART receiver implementation and testing
+- **GCC** – Compilation and testing of the C receiver on Windows
 - **Git & GitHub** – Version control
 
-Development is currently done on Windows using VS Code.
+Development is currently performed on Windows using VS Code.
 
 ## Current Progress
 
@@ -37,6 +37,7 @@ Development is currently done on Windows using VS Code.
 - Added input validation for band filters.
 - Integrated Matplotlib to display frequency response graphs.
 - Added a "Send to Blackfin" button.
+- Connected the GUI to the UART communication module.
 - Added success and error messages for UART transmission.
 - Disabled UART transmission when filter parameters change, until the filter is designed again.
 
@@ -50,7 +51,7 @@ Development is currently done on Windows using VS Code.
 - Connected all filters to the GUI and tested their frequency responses.
 - Sampling frequency is currently fixed at 48 kHz.
 
-### UART Communication
+### UART Communication — Python
 
 Implemented binary message construction and virtual UART transmission using Python and pySerial.
 
@@ -65,9 +66,9 @@ The checksum is calculated as the sum of the count and payload bytes modulo 256.
 
 Implemented:
 - Dynamic coefficient counts
-- Binary serialization using struct.pack()
+- Binary serialization using `struct.pack()`
 - UART transmission using pySerial
-- Virtual loopback testing with loop://
+- Virtual loopback testing using `loop://`
 - Message length validation
 - Header validation
 - Checksum validation
@@ -75,85 +76,166 @@ Implemented:
 - Integration with the graphical interface
 - Serial port error handling
 
-### UART Tests
+### UART Receiver — C
 
-Successfully tested:
-- Low Pass, order 3
-- Low Pass, order 4
-- Band Pass, order 4
-- Detection of incomplete messages
-- Detection of corrupted message data
-- Handling of unavailable serial ports
-- GUI-based virtual UART transmission
+Implemented a standalone UART receiver in C, based on the UART communication examples provided by the thesis supervisor.
 
-The reconstructed coefficients matched the original values in the completed tests.
+The receiver uses a finite state machine to process incoming bytes.
 
-Current limitations:
-- Tests were performed on Windows without physical UART hardware.
-- The Blackfin receiver has not yet been adapted to the new protocol.
-- Byte-by-byte reception, buffering and timeout handling still need to be implemented.
-- The final numeric format and baud rate must be verified for Blackfin compatibility.
-- Real Raspberry Pi to Blackfin communication has not yet been tested.
+Implemented:
+- Detection of the AA BB CC DD header
+- Reading numerator and denominator coefficient counts
+- Dynamic payload length calculation
+- Reception of individual bytes into a buffer
+- Buffer size validation (maximum payload: 144 bytes)
+- Checksum calculation and verification
+- Reconstruction of coefficients using `memcpy()`
+- Retrieval of numerator and denominator coefficients
+- Processing of consecutive UART messages
+- Recovery after complete messages with invalid checksums
+- Counting successfully checksum-validated messages
+
+The receiver is currently tested as a standalone C implementation on Windows. Integration into the Blackfin firmware has not yet been performed.
+
+### UART Testing
+
+**Python tests:**
+- Low Pass, order 3 — PASS
+- Low Pass, order 4 — PASS
+- Band Pass, order 4 — PASS
+- Incomplete message detection — PASS
+- Corrupted message detection — PASS
+- Virtual UART transmission — PASS
+- GUI-based virtual transmission — PASS
+- Unavailable serial port handling — PASS
+
+**C receiver tests:**
+- Header detection — PASS
+- Coefficient count extraction — PASS
+- Checksum verification — PASS
+- Python-to-C coefficient reconstruction — PASS
+- Automatic comparison of 18 Band Pass coefficients — PASS
+- Corrupted message rejection — PASS
+- Incomplete message rejection in a standalone test — PASS
+- Two consecutive valid messages — PASS
+- Corrupted message followed by a valid message — PASS
+
+Test data is generated using Python and saved in binary files. The C receiver reads these files byte by byte to simulate UART reception.
+
+Reference coefficients are also exported from Python and compared against the values reconstructed in C.
+
+**Current limitations:**
+- Tests have been performed on Windows without physical UART communication.
+- The C receiver has not yet been integrated with the Blackfin UART interrupt handler.
+- Automatic timeout and recovery from interrupted transmissions are not implemented.
+- A checksum match does not guarantee that the coefficient values are valid for filtering.
+- Numerical representation and byte-order compatibility with Blackfin still require verification.
+- The physical Raspberry Pi-to-Blackfin communication has not been tested.
+- Real-time audio filtering using the received coefficients has not yet been implemented.
 
 ## Project Structure
 
+```text
 digital-signal-filtering-tool/
 ├── src/
 │   ├── main.py
 │   ├── butterworth.py
 │   ├── communication/
-│   │   └── uart.py
+│   │   ├── uart.py
+│   │   └── uart_receiver.c
 │   └── ui/
 │       └── main_window.py
 ├── tests/
-│   └── uart_test.py
+│   ├── uart_test.py
+│   └── uart_receiver_test.c
 ├── docs/
 ├── assets/
 └── README.md
+```
+
+The UART tests also generate local files such as `packet.bin` and `coefficients_reference.txt`.
 
 ## Running the Application
 
 Activate the virtual environment:
 
-    .\.venv\Scripts\Activate.ps1
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
 
 Run the application:
 
-    python src/main.py
+```powershell
+python src/main.py
+```
 
-To test the UART communication:
+Test the Python UART communication:
 
-    python tests/uart_test.py
+```powershell
+python tests/uart_test.py
+```
+
+Compile the C UART receiver test:
+
+```powershell
+gcc -std=c11 -Wall -Wextra tests/uart_receiver_test.c src/communication/uart_receiver.c -o tests/uart_receiver_test.exe
+```
+
+Run the C test:
+
+```powershell
+.\tests\uart_receiver_test.exe
+```
 
 To test the Butterworth algorithm separately:
 
-    python src/butterworth.py
+```powershell
+python src/butterworth.py
+```
+
+The UART communication currently uses the virtual `loop://` port by default. Physical UART transmission will be configured during hardware integration.
 
 ## Next Steps
 
-### 1. Blackfin UART Receiver
+### 1. Raspberry Pi Setup
 
-- Study and adapt the provided C code.
-- Implement reception of the new message format.
-- Add safe buffer management.
-- Detect complete and incomplete messages.
-- Validate message length and checksum.
-- Reconstruct the filter coefficients.
-- Test the receiver logic on the laptop where possible.
+- Prepare and configure Raspberry Pi OS.
+- Connect and configure the touchscreen.
+- Clone the project from GitHub.
+- Install the required Python dependencies.
+- Run and test the graphical interface.
+- Verify virtual UART communication on Raspberry Pi.
 
-### 2. Hardware Integration
+### 2. Blackfin Integration
 
-- Configure the Raspberry Pi UART interface.
-- Connect Raspberry Pi to Blackfin.
-- Verify communication settings and numeric compatibility.
-- Test physical coefficient transmission.
-- Integrate received coefficients into real-time audio filtering.
+- Adapt the standalone C receiver to the Blackfin environment.
+- Integrate reception with the UART interrupt handler.
+- Verify baud rate and numerical representation compatibility.
+- Implement receiver timeout handling and improved error recovery.
+- Validate received coefficients before applying them.
+- Safely update coefficients used by the audio filtering algorithm.
 
-### 3. Further Improvements
+### 3. Physical UART Communication
 
-- Improve protocol robustness and error handling.
-- Perform additional tests for all filter types and orders.
-- Consider additional filter families after completing the main communication functionality.
+- Configure Raspberry Pi UART pins.
+- Establish the physical Raspberry Pi-to-Blackfin connection.
+- Verify actual transmission and reception.
+- Test different filter types and orders.
+- Verify that Blackfin receives the correct coefficients.
+
+### 4. Real-Time Audio Filtering
+
+- Integrate received coefficients into the audio processing code.
+- Implement real-time digital filtering on Blackfin.
+- Test the audio input and output.
+- Verify filter behavior using different parameters.
+
+### 5. Further Improvements
+
+- Improve UART protocol robustness.
+- Perform additional tests for all supported filter types and orders.
+- Consider additional filter families after completing the main functionality.
+- Improve documentation and testing.
 
 ## References
 
